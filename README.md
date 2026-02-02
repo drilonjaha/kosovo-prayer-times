@@ -1,29 +1,64 @@
-# Kosovo Prayer Times 2026
+# Kosovo Prayer Times
 
-Official prayer times data for Kosovo for the year 2026, extracted from the Bashkësia Islame e Kosovës (Islamic Community of Kosovo) official Takvim.
+Official prayer times data for Kosovo, extracted from the Bashkësia Islame e Kosovës (Islamic Community of Kosovo) official Takvim.
+
+## Important: Prayer Times Are Year-Independent
+
+**Prayer times for any given calendar date (e.g., February 2nd) are identical every year.** This is because prayer times are calculated based on the sun's position, which depends only on:
+
+- Geographic coordinates (latitude/longitude)
+- Day of the year (1-365)
+
+The sun is in the exact same position on February 2nd, 2025 as it is on February 2nd, 2026, 2027, or any other year.
+
+### What changes between years:
+- **Day of the week** - shifts by 1 day each year (2 in leap years)
+- **Islamic (Hijri) calendar dates** - shift ~11 days earlier each year
+- **Islamic holidays** - fall on different Gregorian dates
+
+### Verified Comparison (February 2nd)
+| Prayer | 2025 | 2026 | Same? |
+|--------|------|------|-------|
+| Fajr | 5:29 | 5:29 | ✓ |
+| Dhuhr | 11:54 | 11:54 | ✓ |
+| Asr | 14:35 | 14:35 | ✓ |
+| Maghrib | 16:58 | 16:58 | ✓ |
+| Isha | 18:31 | 18:31 | ✓ |
+
+**This means you can use this data for any year** - just update the day-of-week mapping and Islamic calendar events as needed.
 
 ## Data Source
 
 - **Source**: Kryesia e Bashkësisë Islame e Republikës së Kosovës (BIK)
 - **Original PDF**: [takvimi2026vaktet.pdf](https://dituriaislame.com/wp-content/uploads/2026/01/takvimi2026vaktet.pdf)
-- **Hijri Year**: 1447-1448
+- **Reference Hijri Year**: 1447-1448
 
-## File Format
+## File Formats
 
-The `kosovo-prayer-times-2026.json` file contains:
+| File | Size | Description |
+|------|------|-------------|
+| `kosovo-prayer-times.json` | 114 KB | Full JSON with metadata |
+| `kosovo-prayer-times.min.json` | 69 KB | Minified for production |
+| `kosovo-prayer-times.csv` | 24 KB | Flat CSV for spreadsheets |
 
-### Metadata
-- Source information and URL
-- Location coordinates (42.5°N, 21.0°E - reference: Deçan)
-- Calculation method details (BIM Kosovo method)
-- Timezone information (CET/CEST)
-- City-specific time offsets
-- Major Islamic events for 2026
+### JSON Structure
+```json
+{
+  "metadata": {
+    "source": "BIK",
+    "location": { "latitude": 42.5, "longitude": 21.0 },
+    "calculation_method": { "fajr_angle": 18, "isha_angle": 17 },
+    "city_offsets_minutes": { "Prishtina": -1, ... }
+  },
+  "prayer_times": {
+    "January": [
+      { "day": 1, "fajr": "5:41", "dhuhr": "11:44", "maghrib": "16:21", ... }
+    ]
+  }
+}
+```
 
-### Prayer Times
-For each day of 2026:
-- `date`: ISO format date (YYYY-MM-DD)
-- `day_of_week`: English day name
+### Prayer Times Fields
 - `imsak`: Pre-dawn (start of fasting)
 - `fajr`: Dawn prayer
 - `sunrise`: Sunrise time
@@ -47,52 +82,46 @@ Apply these offsets to the base times for different cities:
 | Vushtrri | -1 min |
 | Presheva | -2 min |
 
-## Usage Example
+## Usage Examples
 
 ### JavaScript
 ```javascript
-const data = require('./kosovo-prayer-times-2026.json');
+const data = require('./kosovo-prayer-times.json');
 
-// Get today's prayer times
-const today = new Date().toISOString().split('T')[0];
-const monthName = new Date().toLocaleString('en', { month: 'long' });
-const day = new Date().getDate();
+// Get prayer times for any date (works for any year!)
+function getPrayerTimes(month, day) {
+  return data.prayer_times[month].find(d => d.day === day);
+}
 
-const todayPrayers = data.prayer_times[monthName].find(d => d.day === day);
-console.log(`Fajr: ${todayPrayers.fajr}`);
-console.log(`Maghrib: ${todayPrayers.maghrib}`);
+const today = getPrayerTimes('February', 2);
+console.log(`Fajr: ${today.fajr}`);    // 5:29
+console.log(`Maghrib: ${today.maghrib}`); // 16:58
 ```
 
 ### Python
 ```python
 import json
-from datetime import date
 
-with open('kosovo-prayer-times-2026.json') as f:
+with open('kosovo-prayer-times.json') as f:
     data = json.load(f)
 
-today = date.today()
-month_name = today.strftime('%B')
-day = today.day
+def get_prayer_times(month: str, day: int) -> dict:
+    """Get prayer times for any date (works for any year!)"""
+    return next(d for d in data['prayer_times'][month] if d['day'] == day)
 
-today_prayers = next(d for d in data['prayer_times'][month_name] if d['day'] == day)
-print(f"Fajr: {today_prayers['fajr']}")
-print(f"Maghrib: {today_prayers['maghrib']}")
+today = get_prayer_times('February', 2)
+print(f"Fajr: {today['fajr']}")      # 5:29
+print(f"Maghrib: {today['maghrib']}") # 16:58
 ```
 
 ### Swift
 ```swift
-import Foundation
-
 struct PrayerDay: Codable {
     let day: Int
-    let date: String
-    let dayOfWeek: String
     let imsak, fajr, sunrise, dhuhr, asr, maghrib, isha: String
 
     enum CodingKeys: String, CodingKey {
-        case day, date, imsak, fajr, sunrise, dhuhr, asr, maghrib, isha
-        case dayOfWeek = "day_of_week"
+        case day, imsak, fajr, sunrise, dhuhr, asr, maghrib, isha
     }
 }
 ```
@@ -104,11 +133,18 @@ The BIM Kosovo calculation method uses:
 - **Isha angle**: 17°
 - **Temkin**: 1.5° (6 minutes)
 - **Fajr offset from Imsak**: 20 minutes
+- **Reference point**: Deçan (westernmost point of Kosovo)
 
-## Islamic Events 2026
+## Daylight Saving Time
 
-| Event | Date |
-|-------|------|
+Times in the JSON already account for DST. Kosovo observes:
+- **DST Start**: Last Sunday of March at 02:00 (+1 hour)
+- **DST End**: Last Sunday of October at 03:00 (-1 hour)
+
+## Islamic Events (2026 Reference)
+
+| Event | 2026 Date |
+|-------|-----------|
 | Laylat al-Miraj | January 15 |
 | Laylat al-Bara'at | February 2 |
 | Ramadan Start | February 19 |
@@ -119,25 +155,22 @@ The BIM Kosovo calculation method uses:
 | Ashura | June 25 |
 | Mawlid | August 24 |
 
-## Daylight Saving Time
-
-- **DST Start**: March 29, 2026 at 02:00 (+1 hour)
-- **DST End**: October 25, 2026 at 03:00 (-1 hour)
-
-Times in the JSON already account for DST changes.
+*Note: Islamic dates shift ~11 days earlier each Gregorian year.*
 
 ## License
 
-This data is extracted from publicly available official religious calendar published by BIK for the benefit of the Muslim community. Please attribute the source when using this data.
+MIT License - See [LICENSE](LICENSE) file.
+
+Data sourced from the official BIK Takvim. Please attribute when using.
 
 ## Contributing
 
-If you find any errors in the data, please open an issue with:
+Found an error? Open an issue with:
 - The specific date(s) affected
-- The expected vs actual values
-- Reference to the original PDF page
+- Expected vs actual values
+- Reference to the original PDF
 
 ## Related Projects
 
-- [Takvimi-per-Evrope-per-MacOS](https://github.com/drilon/Takvimi-per-Evrope-per-MacOS) - macOS prayer times app
-- [Takvimi-per-Evrope-Windows](https://github.com/drilon/Takvimi-per-Evrope-Windows) - Windows prayer times app
+- [Takvimi-per-Evrope-per-MacOS](https://github.com/drilonjaha/Takvimi-per-Evrope-per-MacOS) - macOS prayer times app
+- [Takvimi-per-Evrope-Windows](https://github.com/drilonjaha/Takvimi-per-Evrope-Windows) - Windows prayer times app
